@@ -26,7 +26,7 @@ backgroundColor = makeColor 0 0 0 1
 
 activeColor = makeColor 1 1 1 1
 
-inactiveColor = makeColor 0.5 0.5 0.5 1
+inactiveColor = makeColor 0.2 0.2 0.2 1
 
 -- Enkele constanten om te gebruiken in de rest van de code. Bij het
 -- quoteren kunnen wij deze veranderen om te kijken welke invloed ze
@@ -41,17 +41,17 @@ inactiveColor = makeColor 0.5 0.5 0.5 1
 ---     |   MMMMMMMMM   |
 ---     |               |
 ---     +---------------+
-width = 10 -- de breedte van het bord
+width = 10 -- de breedte van het bord (original: 10)
 
-height = 20 -- de hoogte van het bord
+height = 20 -- de hoogte van het bord (original: 20)
 
-dblock = 12 -- de zijde van 1 blokje (inclusief marge rondom)
+dblock = 12 -- de zijde van 1 blokje (original: 12)
 
-dwidth = 10 -- de zijde van 1 blokje (exclusief marge, inclusief randje)
+dwidth = 10 -- de zijde van 1 blokje (original: 10)
 
-dinner = 7 -- de zijde van 1 blokje (enkel het zwarte stuk middenin)
+dinner = 7 -- de zijde van 1 blokje (original: 7)
 
-fscale = 3 -- algemene schaal van de hele tekening
+fscale = 3 -- algemene schaal van de hele tekening (original: 3)
 
 -- De randen van het bord
 bottom, top :: Y
@@ -77,18 +77,21 @@ filledPixel = pixel activeColor
 emptyPixel :: Picture
 emptyPixel = pixel inactiveColor
 
--- TODO (elias):
-emptyBoard :: Picture
-emptyBoard = pictures []
-
 gridToviewCoords :: Coord -> (Float, Float)
 gridToviewCoords c =
   let x = fromIntegral $ fst c :: Float
       y = fromIntegral $ snd c :: Float
-   in (x * 12.0 * fscale, y * 12.0 * fscale)
+   in (x * dblock * fscale, y * dblock * fscale)
+
+drawXAt :: Picture -> Coord -> Picture
+drawXAt p c = uncurry translate (gridToviewCoords c) p
+
+emptyBoard :: Picture
+emptyBoard =
+  pictures [drawXAt emptyPixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
 
 drawCoord :: Coord -> Picture
-drawCoord c = uncurry translate (gridToviewCoords c) filledPixel
+drawCoord = drawXAt filledPixel
 
 renderPic :: Game -> Picture
 renderPic (Playing p o b _) =
@@ -109,9 +112,7 @@ onBoard c =
    in x >= left && x <= right && y >= bottom && y <= top
 
 atBottom :: Coord -> Bool
-atBottom c =
-  let y = snd c
-   in y == bottom
+atBottom c = snd c == bottom
 
 -- Gegeven twee lijsten van coördinaten, geef deze twee lijsten terug
 -- zonder de coördinaten die ze gemeenschappelijk hebben.
@@ -139,17 +140,17 @@ decBound x b = max b (x - 1)
 incBound x b = min b (x + 1)
 
 --TODO (elias):
-moveInput :: Event -> Game -> Game
-moveInput (EventKey (SpecialKey KeyLeft) Down _ _) = undefined
-moveInput (EventKey (SpecialKey KeyRight) Down _ _) = undefined
-moveInput (EventKey (SpecialKey KeySpace) Down _ _) = undefined
-moveInput _ = undefined
+move :: Event -> Game -> Game
+move (EventKey (SpecialKey KeyLeft) Down _ _) = undefined
+move (EventKey (SpecialKey KeyRight) Down _ _) = undefined
+move (EventKey (SpecialKey KeySpace) Down _ _) = undefined
+move _ = undefined
 
 -- MAIN -----------------------------------------------------------------
 level1 :: [Line]
 level1 = [[0, 1, 3, 4, 5, 9, 10], [], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
 
-startGame = Playing (0, -10) [(0, 0), (0, 1), (0, 2)] [] level1
+startGame = Playing (0, -10) [] [] level1
 
 -- main =
 --   play
@@ -158,7 +159,7 @@ startGame = Playing (0, -10) [(0, 0), (0, 1), (0, 2)] [] level1
 --     2 -- aantal stappen per seconde
 --     startGame
 --     renderPic
---     moveInput
+--     move
 --     nextFrame
 main =
   display
