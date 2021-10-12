@@ -1,10 +1,8 @@
--- Een aantal imports die wel handig kunnen blijken.
 import Data.List
 import Data.Tuple
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 
---------------------------------------------------------------------------------
 type X = Int
 
 type Y = Int
@@ -23,10 +21,10 @@ data Game
   | GameOver
   | Won
 
-backgroundColor, screenGray :: Color
-backgroundColor = makeColor 0 0.05 0.05 1
+backgroundColor, activeColor :: Color
+backgroundColor = makeColor 0 0 0 1
 
-screenGray = makeColorI 0x64 0x6F 0x5D 0XFF
+activeColor = makeColor 1 1 1 1
 
 -- Enkele constanten om te gebruiken in de rest van de code. Bij het
 -- quoteren kunnen wij deze veranderen om te kijken welke invloed ze
@@ -53,7 +51,7 @@ dinner = 7 -- de zijde van 1 blokje (enkel het zwarte stuk middenin)
 
 fscale = 3 -- algemene schaal van de hele tekening
 
--- De randen van het bord, om te gebruiken in andere functies.
+-- De randen van het bord
 bottom, top :: Y
 left, right :: X
 bottom = div (-height) 2
@@ -64,54 +62,75 @@ left = div (-width) 2
 
 right = div width 2
 
--- SPELLOGICA ----------------------------------------------------------
+-- GRAPGISCHE ELEMENTEN ------------------------------------------------
+gridToviewCoords :: Coord -> (Float, Float)
+gridToviewCoords c =
+  let x = fromIntegral $ fst c :: Float
+      y = fromIntegral $ snd c :: Float
+   in (x, y)
+
+pixel :: Picture
+pixel =
+  let length = fscale * dblock
+   in rectangleSolid length length
+
 filledPixel :: Picture
-filledPixel = undefined
+filledPixel = color activeColor pixel
 
 emptyPixel :: Picture
-emptyPixel = undefined
+emptyPixel = color backgroundColor pixel
 
 emptyBoard :: Picture
-emptyBoard = undefined
+emptyBoard = pictures []
 
--- Een gevulde/actieve pixel op de locatie aangeduid door de coördinaat.
 drawCoord :: Coord -> Picture
-drawCoord = undefined
+drawCoord c = uncurry translate (gridToviewCoords c) filledPixel
 
 renderPic :: Game -> Picture
-renderPic (Playing p o b _) = undefined
-renderPic Won = undefined
-renderPic GameOver = undefined
+--(TODO: elias)
+renderPic (Playing p o b _) = emptyBoard
+renderPic Won = emptyBoard
+renderPic GameOver = emptyBoard
 
 -- SPELLOGICA ----------------------------------------------------------
 onBoard :: Coord -> Bool
-onBoard = undefined
+onBoard c =
+  let x = fst c
+      y = snd c
+   in x >= left && x <= right && y >= bottom && y <= top
 
 atBottom :: Coord -> Bool
-atBottom = undefined
+atBottom c =
+  let y = snd c
+   in y == bottom
 
 -- Gegeven twee lijsten van coördinaten, geef deze twee lijsten terug
 -- zonder de coördinaten die ze gemeenschappelijk hebben.
 collide :: [Coord] -> [Coord] -> ([Coord], [Coord])
-collide = undefined
+collide c1 c2 =
+  let its = c1 `intersect` c2
+   in (c1 \\ its, c2 \\ its)
 
 -- Gebruik de `move` functie om de coördinaten in `moving` te verzetten.
 -- Bij botsingen met de coördinaten in `static` moeten beide coördinaten
 -- verwijderd worden uit de teruggegeven lijsten.
+--(TODO: elias)
 moveAndCollide :: (Coord -> Coord) -> ([Coord], [Coord]) -> ([Coord], [Coord])
 moveAndCollide move (moving, static) = undefined
 
+--(TODO: elias)
 nextFrame :: Float -> Game -> Game
 nextFrame t = undefined
 
 -- Hulpfuncties om een getal te decrementeren of incrementeren zonder
 -- een grens te overschrijden.
+--(TODO: elias)
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
 decBound x b = max b (x - 1)
 
 incBound x b = min b (x + 1)
 
--- Verwerk gebruiksinput.
+--(TODO: elias)
 moveInput :: Event -> Game -> Game
 moveInput (EventKey (SpecialKey KeyLeft) Down _ _) = undefined
 moveInput (EventKey (SpecialKey KeyRight) Down _ _) = undefined
