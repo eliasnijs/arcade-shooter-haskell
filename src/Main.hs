@@ -21,10 +21,12 @@ data Game
   | GameOver
   | Won
 
-backgroundColor, activeColor :: Color
+backgroundColor, activeColor, inactiveColor :: Color
 backgroundColor = makeColor 0 0 0 1
 
 activeColor = makeColor 1 1 1 1
+
+inactiveColor = makeColor 0.5 0.5 0.5 1
 
 -- Enkele constanten om te gebruiken in de rest van de code. Bij het
 -- quoteren kunnen wij deze veranderen om te kijken welke invloed ze
@@ -62,33 +64,40 @@ left = div (-width) 2
 
 right = div width 2
 
--- GRAPGISCHE ELEMENTEN ------------------------------------------------
+-- GRAFISCHE ELEMENTEN ------------------------------------------------
+pixel :: Color -> Picture
+pixel c =
+  let outer = color c $ rectangleWire (fscale * dwidth) (fscale * dwidth)
+      inner = color c $ rectangleSolid (fscale * dinner) (fscale * dinner)
+   in pictures [outer, inner]
+
+filledPixel :: Picture
+filledPixel = pixel activeColor
+
+emptyPixel :: Picture
+emptyPixel = pixel inactiveColor
+
+-- TODO (elias):
+emptyBoard :: Picture
+emptyBoard = pictures []
+
 gridToviewCoords :: Coord -> (Float, Float)
 gridToviewCoords c =
   let x = fromIntegral $ fst c :: Float
       y = fromIntegral $ snd c :: Float
-   in (x, y)
-
-pixel :: Picture
-pixel =
-  let length = fscale * dblock
-   in rectangleSolid length length
-
-filledPixel :: Picture
-filledPixel = color activeColor pixel
-
-emptyPixel :: Picture
-emptyPixel = color backgroundColor pixel
-
-emptyBoard :: Picture
-emptyBoard = pictures []
+   in (x * 12.0 * fscale, y * 12.0 * fscale)
 
 drawCoord :: Coord -> Picture
 drawCoord c = uncurry translate (gridToviewCoords c) filledPixel
 
 renderPic :: Game -> Picture
---(TODO: elias)
-renderPic (Playing p o b _) = emptyBoard
+renderPic (Playing p o b _) =
+  pictures
+    [ emptyBoard
+    , drawCoord p
+    , pictures [drawCoord c | c <- o]
+    , pictures [drawCoord c | c <- b]
+    ]
 renderPic Won = emptyBoard
 renderPic GameOver = emptyBoard
 
@@ -114,23 +123,22 @@ collide c1 c2 =
 -- Gebruik de `move` functie om de coördinaten in `moving` te verzetten.
 -- Bij botsingen met de coördinaten in `static` moeten beide coördinaten
 -- verwijderd worden uit de teruggegeven lijsten.
---(TODO: elias)
+--TODO (elias):
 moveAndCollide :: (Coord -> Coord) -> ([Coord], [Coord]) -> ([Coord], [Coord])
 moveAndCollide move (moving, static) = undefined
 
---(TODO: elias)
+--TODO (elias):
 nextFrame :: Float -> Game -> Game
 nextFrame t = undefined
 
 -- Hulpfuncties om een getal te decrementeren of incrementeren zonder
 -- een grens te overschrijden.
---(TODO: elias)
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
 decBound x b = max b (x - 1)
 
 incBound x b = min b (x + 1)
 
---(TODO: elias)
+--TODO (elias):
 moveInput :: Event -> Game -> Game
 moveInput (EventKey (SpecialKey KeyLeft) Down _ _) = undefined
 moveInput (EventKey (SpecialKey KeyRight) Down _ _) = undefined
@@ -141,14 +149,19 @@ moveInput _ = undefined
 level1 :: [Line]
 level1 = [[0, 1, 3, 4, 5, 9, 10], [], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
 
-startGame = Playing (0, -10) [] [] level1
+startGame = Playing (0, -10) [(0, 0), (0, 1), (0, 2)] [] level1
 
+-- main =
+--   play
+--     (InWindow "Brick Game (c) Elias Nijs" (500, 800) (10, 10))
+--     backgroundColor
+--     2 -- aantal stappen per seconde
+--     startGame
+--     renderPic
+--     moveInput
+--     nextFrame
 main =
-  play
+  display
     (InWindow "Brick Game (c) Elias Nijs" (500, 800) (10, 10))
     backgroundColor
-    2 -- aantal stappen per seconde
-    startGame
-    renderPic
-    moveInput
-    nextFrame
+    (renderPic startGame)
