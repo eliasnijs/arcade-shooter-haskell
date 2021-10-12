@@ -1,17 +1,18 @@
 -- Een aantal imports die wel handig kunnen blijken.
-import           Data.List
-import           Data.Tuple
-import           Graphics.Gloss
-import           Graphics.Gloss.Interface.Pure.Game
+import Data.List
+import Data.Tuple
+import Graphics.Gloss
+import Graphics.Gloss.Interface.Pure.Game
 
 --------------------------------------------------------------------------------
 -- Datatypes en constanten
-
 -- Coördinaten worden opgeslagen als paar gehele getallen. We verzinnen
 -- type-aliassen hiervoor om de types van onze functies leesbaar en
 -- betekenisvol te maken.
 type X = Int
+
 type Y = Int
+
 type Coord = (X, Y)
 
 -- Een level bestaat uit een reeks vallende lijnen. Zo'n lijn stellen
@@ -27,28 +28,35 @@ type Line = [X]
 -- aantal afgeschoten kogels (eveneens) en de lijnen die nog moeten
 -- vallen.
 data Game
-  = Playing { player    :: Coord
-            , obstacles :: [Coord]
-            , bullets   :: [Coord]
-            , lines     :: [Line]
-            }
+  = Playing
+      { player :: Coord
+      , obstacles :: [Coord]
+      , bullets :: [Coord]
+      , lines :: [Line]
+      }
   | GameOver
   | Won
 
 -- Twee kleuren die jullie alvast krijgen - pas deze gerust aan.
 screenGreen, screenGray :: Color
 screenGreen = makeColorI 0x6F 0x77 0x5F 0xFF
-screenGray  = makeColorI 0x64 0x6F 0x5D 0XFF
+
+screenGray = makeColorI 0x64 0x6F 0x5D 0XFF
 
 -- Enkele constanten om te gebruiken in de rest van de code. Bij het
 -- quoteren kunnen wij deze veranderen om te kijken welke invloed ze
 -- hebben.
-width   = 10 -- de breedte van het bord
-height  = 20 -- de hoogte van het bord
-dblock  = 12 -- de zijde van 1 blokje (inclusief marge rondom)
-dwidth  = 10 -- de zijde van 1 blokje (exclusief marge, inclusief randje)
-dinner  = 7 -- de zijde van 1 blokje (enkel het zwarte stuk middenin)
-fscale  = 3 -- algemene schaal van de hele tekening
+width = 10 -- de breedte van het bord
+
+height = 20 -- de hoogte van het bord
+
+dblock = 12 -- de zijde van 1 blokje (inclusief marge rondom)
+
+dwidth = 10 -- de zijde van 1 blokje (exclusief marge, inclusief randje)
+
+dinner = 7 -- de zijde van 1 blokje (enkel het zwarte stuk middenin)
+
+fscale = 3 -- algemene schaal van de hele tekening
 
 --- <-----------------------> dblock
 ---     <---------------> dwidth
@@ -60,18 +68,19 @@ fscale  = 3 -- algemene schaal van de hele tekening
 ---     |   MMMMMMMMM   |
 ---     |               |
 ---     +---------------+
-
 -- De randen van het bord, om te gebruiken in andere functies.
 bottom, top :: Y
 left, right :: X
 bottom = undefined
-top    = undefined
-left   = undefined
-right  = undefined
+
+top = undefined
+
+left = undefined
+
+right = undefined
 
 ------------------------------------------------------------------------
 -- Grafische elementen
-
 -- Een gevulde/actieve pixel, gecentreerd rond de oorsprong
 filled :: Picture
 filled = undefined
@@ -96,7 +105,6 @@ gamePic GameOver = undefined
 
 ------------------------------------------------------------------------
 -- Spellogica
-
 -- Of een gegeven coördinaat op het spelbord ligt.
 onBoard :: Coord -> Bool
 onBoard = undefined
@@ -126,30 +134,28 @@ next t = undefined
 -- een grens te overschrijden.
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
 decBound x b = max b (x - 1)
+
 incBound x b = min b (x + 1)
 
 -- Verwerk gebruiksinput.
 move :: Event -> Game -> Game
-move (EventKey (SpecialKey KeyLeft)  Down _ _) = undefined
+move (EventKey (SpecialKey KeyLeft) Down _ _) = undefined
 move (EventKey (SpecialKey KeyRight) Down _ _) = undefined
 move (EventKey (SpecialKey KeySpace) Down _ _) = undefined
-move _                                         = undefined
+move _ = undefined
 
-------------------------------------------------------------------------
--- De main-methode en speldefinities
-
--- Een eenvoudig level om mee te testen.
+-- MAIN -----------------------------------------------------------------
 level1 :: [Line]
-level1 = [[0,1,3,4,5,9,10],[],[],[],[2,3,4,5,6,7,9,10] ]
+level1 = [[0, 1, 3, 4, 5, 9, 10], [], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
 
--- Een spel waarbij de speler midden onderaan start.
-startGame = Playing (0,-10) [] [] level1
+startGame = Playing (0, -10) [] [] level1
 
--- Start het spel op.
-main  = play (InWindow "UGent Brick Game" (500, 800) (10, 10))
-             screenGreen -- de achtergrondkleur
-             2 -- aantal stappen per seconde
-             startGame -- de beginwereld
-             gamePic -- de 'render'-functie, om naar scherm te tekenen
-             move -- de 'handle'-functie, om gebruiksinvoer te verwerken
-             next -- de 'step'-functie, om 1 tijdstap te laten passeren
+main =
+  play
+    (InWindow "Brick Game (c) Elias Nijs" (500, 800) (10, 10))
+    screenGreen -- de achtergrondkleur
+    2 -- aantal stappen per seconde
+    startGame -- de beginwereld
+    gamePic -- de 'render'-functie, om naar scherm te tekenen
+    move -- de 'handle'-functie, om gebruiksinvoer te verwerken
+    next -- de 'step'-functie, om 1 tijdstap te laten passeren
