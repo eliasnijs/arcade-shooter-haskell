@@ -21,12 +21,16 @@ data Game
   | GameOver
   | Won
 
-backgroundColor, activeColor, inactiveColor, loseColor, winColor :: Color
+backgroundColor, playerColor, enemyColor, inactiveColor, bulletColor, loseColor, winColor :: Color
 backgroundColor = makeColor 0 0 0 1
 
-activeColor = makeColor 0 1 1 1
+inactiveColor = makeColor 0.15 0.2 0.2 1
 
-inactiveColor = makeColor 0 0.12 0.12 1
+playerColor = makeColor 0 1 1 1
+
+enemyColor = makeColor 1 0.8 0 1
+
+bulletColor = playerColor 
 
 loseColor = makeColor 1 0 1 1
 
@@ -72,17 +76,17 @@ pixel c =
       inner = rectangleSolid (fscale * dinner) (fscale * dinner)
    in color c $ pictures [outer, inner]
 
-filledPixel :: Picture
-filledPixel = pixel activeColor
-
 emptyPixel :: Picture
 emptyPixel = pixel inactiveColor
 
-losePixel :: Picture
-losePixel = pixel loseColor
+enemyPixel :: Picture
+enemyPixel = pixel enemyColor 
 
-winPixel :: Picture
-winPixel = pixel winColor
+playerPixel :: Picture
+playerPixel = pixel playerColor 
+
+bulletPixel :: Picture
+bulletPixel = pixel bulletColor
 
 gridToviewCoords :: Coord -> (Float, Float)
 gridToviewCoords c =
@@ -90,31 +94,28 @@ gridToviewCoords c =
       y = fromIntegral $ snd c :: Float
    in (x * dblock * fscale, y * dblock * fscale)
 
-drawXAt :: Picture -> Coord -> Picture
-drawXAt p c = uncurry translate (gridToviewCoords c) p
-
 emptyBoard :: Picture
 emptyBoard =
   pictures
     [drawXAt emptyPixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
 
-drawCoord :: Coord -> Picture
-drawCoord = drawXAt filledPixel
+drawXAt :: Picture -> Coord -> Picture
+drawXAt p c = uncurry translate (gridToviewCoords c) p
 
 renderPic :: Game -> Picture
 renderPic (Playing p o b _) =
   pictures
     [ emptyBoard
-    , drawCoord p
-    , pictures [drawCoord c | c <- o]
-    , pictures [drawCoord c | c <- b]
+    , drawXAt playerPixel p
+    , pictures [drawXAt enemyPixel c | c <- o]
+    , pictures [drawXAt bulletPixel c | c <- b]
     ]
 renderPic Won =
   pictures
-    [drawXAt winPixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
+    [drawXAt playerPixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
 renderPic GameOver =
   pictures
-    [drawXAt losePixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
+    [drawXAt enemyPixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
 
 -- SPELLOGICA ----------------------------------------------------------
 onBoard :: Coord -> Bool
@@ -159,7 +160,6 @@ move (EventKey (SpecialKey KeySpace) Down _ _) (Playing p o b l) =
 move _ game = game
 
 -- ADDITIONAL FEATURES --------------------------------------------------
--- TODO (elias): M : delay between shooting
 -- TODO (elias): M : particle system
 -- TODO (elias): M : camera shake
 -- TODO (elias): M : better feedback on: dieing, shooting and killing 
