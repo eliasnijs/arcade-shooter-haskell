@@ -6,6 +6,7 @@ import Graphics.Gloss.Interface.Pure.Game
 type X = Int
 
 type Y = Int
+
 type Coord = (X, Y)
 
 type Line = [X]
@@ -20,16 +21,17 @@ data Game
   | GameOver
   | Won
 
-backgroundColor, activeColor, inactiveColor :: Color
+backgroundColor, activeColor, inactiveColor, loseColor, winColor :: Color
 backgroundColor = makeColor 0 0 0 1
 
 activeColor = makeColor 0 1 1 1
 
 inactiveColor = makeColor 0 0.12 0.12 1
 
--- Enkele constanten om te gebruiken in de rest van de code. Bij het
--- quoteren kunnen wij deze veranderen om te kijken welke invloed ze
--- hebben.
+loseColor = makeColor 1 0 1 1
+
+winColor = makeColor 0 1 0 1
+
 --- <-----------------------> dblock
 ---     <---------------> dwidth
 ---         <-------> dinner
@@ -76,6 +78,12 @@ filledPixel = pixel activeColor
 emptyPixel :: Picture
 emptyPixel = pixel inactiveColor
 
+losePixel :: Picture
+losePixel = pixel loseColor
+
+winPixel :: Picture
+winPixel = pixel winColor
+
 gridToviewCoords :: Coord -> (Float, Float)
 gridToviewCoords c =
   let x = fromIntegral $ fst c :: Float
@@ -101,8 +109,12 @@ renderPic (Playing p o b _) =
     , pictures [drawCoord c | c <- o]
     , pictures [drawCoord c | c <- b]
     ]
-renderPic Won = emptyBoard
-renderPic GameOver = emptyBoard
+renderPic Won =
+  pictures
+    [drawXAt winPixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
+renderPic GameOver =
+  pictures
+    [drawXAt losePixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
 
 -- SPELLOGICA ----------------------------------------------------------
 onBoard :: Coord -> Bool
@@ -117,24 +129,25 @@ atBottom c = snd c == bottom
 collide :: [Coord] -> [Coord] -> ([Coord], [Coord])
 collide c1 c2 = (c1 \\ c2, c2 \\ c1)
 
+moveAndCollide :: (Coord -> Coord) -> ([Coord], [Coord]) -> ([Coord], [Coord])
+moveAndCollide move (moving, static) =
+  collide [move c | c <- moving, onBoard (move c)] static
+
+nextFrame :: Float -> Game -> Game
+nextFrame t (Playing p o b ln)
+  | any atBottom o = GameOver
+  | all null o && all null ln = Won
+  | otherwise =
+    let t = moveAndCollide (\c -> (fst c, snd c - 1)) (o, b)
+        q = moveAndCollide (\c -> (fst c, snd c + 1)) (snd t, fst t)
+        l = ln ++ [[]]
+     in Playing p (snd q ++ [(e - right, top) | e <- head l]) (fst q) (tail l)
+nextFrame t g = g
+
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
 decBound x b = max b (x - 1)
 
 incBound x b = min b (x + 1)
-
-moveAndCollide :: (Coord -> Coord) -> ([Coord], [Coord]) -> ([Coord], [Coord])
-moveAndCollide move (moving, static) = collide [move c | c <- moving] static
-
--- TODO (elias): M : fix no lines left
-nextFrame :: Float -> Game -> Game
-nextFrame t (Playing p o b l) =
-   let t = moveAndCollide (\c -> (fst c, decBound (snd c) bottom)) (o, b)
-       q = moveAndCollide (\c -> (fst c, incBound (snd c) top)) (snd t, fst t)
-    in Playing
-    p
-    (snd q ++ [(e - 5, top) | e <- head l])
-    (fst q)
-    (tail l)
 
 move :: Event -> Game -> Game
 move (EventKey (SpecialKey KeyLeft) Down _ _) (Playing p o b l) =
@@ -142,7 +155,7 @@ move (EventKey (SpecialKey KeyLeft) Down _ _) (Playing p o b l) =
 move (EventKey (SpecialKey KeyRight) Down _ _) (Playing p o b l) =
   Playing (incBound (fst p) right, snd p) o b l
 move (EventKey (SpecialKey KeySpace) Down _ _) (Playing p o b l) =
-  Playing p o (b ++ [(fst p, incBound (snd p) top)]) l
+  Playing p o (b ++ [(fst p, snd p + 1)]) l
 move _ game = game
 
 -- ADDITIONAL FEATURES --------------------------------------------------
@@ -153,33 +166,7 @@ move _ game = game
 -- TODO (elias): M : random
 -- MAIN -----------------------------------------------------------------
 level1 :: [Line]
-level1 =
-  [ [0, 1, 3, 4, 5, 9, 10]
-  , []
-  , []
-  , []
-  , [2, 3, 4, 5, 6, 7, 9, 10]
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  , []
-  ]
+level1 = [[0, 1, 3, 4, 5, 9, 10], [], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
 
 startGame = Playing (0, -10) [] [] level1
 
@@ -192,8 +179,3 @@ main =
     renderPic
     move
     nextFrame
--- main =
---   display
---     (InWindow "Brick Game (c) Elias Nijs" (500, 800) (10, 10))
---     backgroundColor
---     (renderPic startGame)
