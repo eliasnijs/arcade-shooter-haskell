@@ -21,21 +21,6 @@ data Game
   | GameOver
   | Won
 
-backgroundColor, playerColor, enemyColor, inactiveColor, bulletColor, loseColor, winColor :: Color
-backgroundColor = makeColor 0 0 0 1
-
-inactiveColor = makeColor 0.15 0.2 0.2 1
-
-playerColor = makeColor 0 1 1 1
-
-enemyColor = makeColor 1 0.8 0 1
-
-bulletColor = playerColor 
-
-loseColor = makeColor 1 0 1 1
-
-winColor = makeColor 0 1 0 1
-
 --- <-----------------------> dblock
 ---     <---------------> dwidth
 ---         <-------> dinner
@@ -46,19 +31,29 @@ winColor = makeColor 0 1 0 1
 ---     |   MMMMMMMMM   |
 ---     |               |
 ---     +---------------+
-width = 10 -- de breedte van het bord (original: 10)
+width = 10
 
-height = 20 -- de hoogte van het bord (original: 20)
+height = 20
 
-dblock = 12 -- de zijde van 1 blokje (original: 12)
+dblock = 12
 
-dwidth = 10 -- de zijde van 1 blokje (original: 10)
+dwidth = 10
 
-dinner = 3 -- de zijde van 1 blokje (original: 7)
+dinner = 5
 
-fscale = 3 -- algemene schaal van de hele tekening (original: 3)
+fscale = 3
 
--- De randen van het bord
+backgroundColor, playerColor, enemyColor, inactiveColor, bulletColor :: Color
+backgroundColor = makeColor 0 0 0 1
+
+inactiveColor = makeColor 0 0.1 0.1 1
+
+playerColor = makeColor 0 1 1 1
+
+enemyColor = makeColor 1 0.5 0 1
+
+bulletColor = makeColor 1 1 1 1
+
 bottom, top :: Y
 left, right :: X
 bottom = div (-height) 2
@@ -69,7 +64,7 @@ left = div (-width) 2
 
 right = div width 2
 
--- GRAFISCHE ELEMENTEN ------------------------------------------------
+--- RENDERER -----------------------------------------------------------
 pixel :: Color -> Picture
 pixel c =
   let outer = rectangleWire (fscale * dwidth) (fscale * dwidth)
@@ -80,13 +75,15 @@ emptyPixel :: Picture
 emptyPixel = pixel inactiveColor
 
 enemyPixel :: Picture
-enemyPixel = pixel enemyColor 
+enemyPixel = pixel enemyColor
 
 playerPixel :: Picture
-playerPixel = pixel playerColor 
+playerPixel = pixel playerColor
 
 bulletPixel :: Picture
-bulletPixel = pixel bulletColor
+bulletPixel =
+  let inner = rectangleSolid (fscale * dinner) (fscale * dinner)
+   in color bulletColor $ pictures [inner]
 
 gridToviewCoords :: Coord -> (Float, Float)
 gridToviewCoords c =
@@ -117,7 +114,7 @@ renderPic GameOver =
   pictures
     [drawXAt enemyPixel (x, y) | x <- [left .. right], y <- [bottom .. top]]
 
--- SPELLOGICA ----------------------------------------------------------
+-- ENGINE --------------------------------------------------------------
 onBoard :: Coord -> Bool
 onBoard c =
   let x = fst c
@@ -159,12 +156,7 @@ move (EventKey (SpecialKey KeySpace) Down _ _) (Playing p o b l) =
   Playing p o (b ++ [(fst p, snd p + 1)]) l
 move _ game = game
 
--- ADDITIONAL FEATURES --------------------------------------------------
--- TODO (elias): M : particle system
--- TODO (elias): M : camera shake
--- TODO (elias): M : better feedback on: dieing, shooting and killing 
--- TODO (elias): M : random
--- MAIN -----------------------------------------------------------------
+--- MAIN ---------------------------------------------------------------
 level1 :: [Line]
 level1 = [[0, 1, 3, 4, 5, 9, 10], [], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
 
