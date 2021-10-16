@@ -94,7 +94,8 @@ emptyBoard =
 renderPic :: Game -> Picture
 renderPic (Playing p o b _ t) =
   pictures
-    [ emptyBoard
+    [ scaleImage $ translate 0 (fromIntegral bottom*dblock) (t !! 3)
+    , emptyBoard
     , pictures $ fmap (drawXAt $ scaleImage $ t !! 1) o 
     , pictures $ fmap (drawXAt $ scaleImage $ head t) b
     , drawXAt (scaleImage $ t !! 2) p
@@ -162,13 +163,14 @@ main = do
   bulletTexture <- loadBMP "resources/bullet.bmp"
   enemyTexture <- loadBMP "resources/enemy.bmp"
   playerTexture <- loadBMP "resources/player.bmp"
+  backgroundTexture <- loadBMP "resources/background.bmp"
   let startGame =
         Playing
           (0, bottom)
           []
           []
           level1
-          [bulletTexture, enemyTexture, playerTexture]
+          [bulletTexture, enemyTexture, playerTexture, backgroundTexture]
   bulletImage <- loadBMP "resources/bullet.bmp"
   play
     (InWindow "Brick Game (c) Elias Nijs" (500, 800) (10, 10))
