@@ -23,9 +23,13 @@ data Game
       , lines :: [Line]
       , textures :: [Texture]
       , time :: (Int, Int)
+      , buttonsPressed :: Int
       }
   | GameOver
   | Won
+  | Endscreen
+      { score :: Int
+      }
 
 --- <-----------------------> dblock
 ---     <---------------> dwidth
@@ -89,34 +93,38 @@ pixel c =
       inner = rectangleSolid (fscale * dinner) (fscale * dinner)
    in color c $ pictures [outer, inner]
 
-emptyBoard :: Picture
-emptyBoard =
+emptyBoard :: Color -> Picture
+emptyBoard c =
   pictures
-    [ drawXAt (pixel inactiveColor) (x, y)
-    | x <- [left .. right]
-    , y <- [bottom .. top]
-    ]
+    [drawXAt (pixel c) (x, y) | x <- [left .. right], y <- [bottom .. top]]
+
+scoreBoard :: Int -> Picture
+scoreBoard c =
+  let text =
+        translate
+          (-fscale * 2)
+          (-fscale * 2.5)
+          (scale (fscale * 0.05) (fscale * 0.05) (Color black (Text $ show c)))
+      board =
+        Color white (rectangleSolid (3 * (dblock + 1) * fscale) (10 * fscale))
+   in pictures [board, text]
 
 renderPic :: Game -> Picture
-renderPic (Playing p o b _ t _) =
+renderPic (Playing p o b _ t (st, fp) _) =
   pictures
     [ scaleImage $ translate 0 (fromIntegral bottom * dblock) (t !! 3)
-    , emptyBoard
+    , emptyBoard inactiveColor
     , pictures $ fmap (drawXAt $ scaleImage $ t !! 1) o
     , pictures $ fmap (drawXAt $ scaleImage $ head t) b
     , drawXAt (scaleImage $ t !! 2) p
+    , translate 0 (fromIntegral (bottom - 1) * dblock * fscale) (scoreBoard fp)
     ]
-renderPic Won =
+renderPic Won = emptyBoard playerColor
+renderPic GameOver = emptyBoard enemyColor
+renderPic (Endscreen score) =
   pictures
-    [ drawXAt (pixel playerColor) (x, y)
-    | x <- [left .. right]
-    , y <- [bottom .. top]
-    ]
-renderPic GameOver =
-  pictures
-    [ drawXAt (pixel enemyColor) (x, y)
-    | x <- [left .. right]
-    , y <- [bottom .. top]
+    [ Color white (rectangleWire (fscale * dblock * 6) (fscale * dblock * 3))
+    , scoreBoard score
     ]
 
 -- ENGINE --------------------------------------------------------------
@@ -141,17 +149,17 @@ generateLine seed =
   let t :: RandomGen g => Int -> g -> [Int]
       t n = take n . unfoldr (Just . uniformR (0, 1))
       booleanLine = t (width + 1) (mkStdGen seed) :: [Int]
-      empty = head $ t 1 (mkStdGen $ seed + 271) :: Int
+      empty = sum $ t 2 (mkStdGen $ seed + 271) :: Int
    in [c | c <- [0 .. width], (booleanLine !! c) == 1 && empty == 0]
 
 nextFrame :: Float -> Game -> Game
-nextFrame t (Playing p o b ln tex (t1, fp))
-  | any atBottom o = GameOver
-  | all null o && all null ln = Won
+nextFrame t (Playing p o b ln tex (t1, fp) bp)
+  | any atBottom o = Endscreen fp
+  -- | all null o && all null ln = Won
   | otherwise =
     let t = moveAndCollide (\c -> (fst c, snd c - 1)) (o, b)
         q = moveAndCollide (\c -> (fst c, snd c + 1)) (snd t, fst t)
-        l = ln ++ [generateLine (t1 + fp * 10)]
+        l = ln ++ [generateLine (t1 + (fp + bp) * 10)]
      in Playing
           p
           (snd q ++ [(e - right, top) | e <- head l])
@@ -159,6 +167,7 @@ nextFrame t (Playing p o b ln tex (t1, fp))
           (tail l)
           tex
           (t1, fp + 1)
+          bp
 nextFrame t g = g
 
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
@@ -167,12 +176,12 @@ decBound x b = max b (x - 1)
 incBound x b = min b (x + 1)
 
 move :: Event -> Game -> Game
-move (EventKey (SpecialKey KeyLeft) Down _ _) (Playing p o b l t (st, fp)) =
-  Playing (decBound (fst p) left, snd p) o b l t (st, fp + 1)
-move (EventKey (SpecialKey KeyRight) Down _ _) (Playing p o b l t (st, fp)) =
-  Playing (incBound (fst p) right, snd p) o b l t (st, fp + 1)
-move (EventKey (SpecialKey KeySpace) Down _ _) (Playing p o b l t (st, fp)) =
-  Playing p o (b ++ [p]) l t (st, fp + 1)
+move (EventKey (SpecialKey KeyLeft) Down _ _) (Playing p o b l t tm bp) =
+  Playing (decBound (fst p) left, snd p) o b l t tm (bp + 1)
+move (EventKey (SpecialKey KeyRight) Down _ _) (Playing p o b l t tm bp) =
+  Playing (incBound (fst p) right, snd p) o b l t tm (bp + 1)
+move (EventKey (SpecialKey KeySpace) Down _ _) (Playing p o b l t tm bp) =
+  Playing p o (b ++ [p]) l t tm (bp + 1)
 move _ game = game
 
 --- MAIN ---------------------------------------------------------------
@@ -194,11 +203,12 @@ main = do
           level1
           [bulletTexture, enemyTexture, playerTexture, backgroundTexture]
           (starttime, 0)
+          0
   bulletImage <- loadBMP "resources/bullet.bmp"
   play
-    (InWindow "Brick Game (c) Elias Nijs" (500, 800) (10, 10))
+    (InWindow "Brick Game (c) Elias Nijs" (500, 900) (10, 10))
     backgroundColor
-    1 -- aantal stappen per seconde
+    2 -- aantal stappen per seconde
     startGame
     renderPic
     move
