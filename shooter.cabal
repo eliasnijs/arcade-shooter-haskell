@@ -8,3 +8,5 @@ executable glosstest
   default-language: Haskell2010
   build-depends: base >= 4.14.3.0 && < 4.15
                , gloss >= 1.13.2.1 && < 1.14
+               , random >= 1.1
+               , time

@@ -1,7 +1,9 @@
 import Data.List
+import Data.Time.Clock.POSIX
 import Data.Tuple
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+import System.Random
 
 type X = Int
 
@@ -20,6 +22,7 @@ data Game
       , bullets :: [Coord]
       , lines :: [Line]
       , textures :: [Texture]
+      , time :: (Int, Int)
       }
   | GameOver
   | Won
@@ -89,23 +92,32 @@ pixel c =
 emptyBoard :: Picture
 emptyBoard =
   pictures
-    [drawXAt (pixel inactiveColor) (x, y) | x <- [left .. right], y <- [bottom .. top]]
+    [ drawXAt (pixel inactiveColor) (x, y)
+    | x <- [left .. right]
+    , y <- [bottom .. top]
+    ]
 
 renderPic :: Game -> Picture
-renderPic (Playing p o b _ t) =
+renderPic (Playing p o b _ t _) =
   pictures
-    [ scaleImage $ translate 0 (fromIntegral bottom*dblock) (t !! 3)
+    [ scaleImage $ translate 0 (fromIntegral bottom * dblock) (t !! 3)
     , emptyBoard
-    , pictures $ fmap (drawXAt $ scaleImage $ t !! 1) o 
+    , pictures $ fmap (drawXAt $ scaleImage $ t !! 1) o
     , pictures $ fmap (drawXAt $ scaleImage $ head t) b
     , drawXAt (scaleImage $ t !! 2) p
     ]
 renderPic Won =
   pictures
-    [drawXAt (pixel playerColor) (x, y) | x <- [left .. right], y <- [bottom .. top]]
+    [ drawXAt (pixel playerColor) (x, y)
+    | x <- [left .. right]
+    , y <- [bottom .. top]
+    ]
 renderPic GameOver =
   pictures
-    [drawXAt (pixel enemyColor) (x, y) | x <- [left .. right], y <- [bottom .. top]]
+    [ drawXAt (pixel enemyColor) (x, y)
+    | x <- [left .. right]
+    , y <- [bottom .. top]
+    ]
 
 -- ENGINE --------------------------------------------------------------
 onBoard :: Coord -> Bool
@@ -124,20 +136,29 @@ moveAndCollide :: (Coord -> Coord) -> ([Coord], [Coord]) -> ([Coord], [Coord])
 moveAndCollide move (moving, static) =
   collide (filter onBoard (fmap move moving)) (nub static)
 
+generateLine :: Int -> [Int]
+generateLine seed =
+  let t :: RandomGen g => Int -> g -> [Int]
+      t n = take n . unfoldr (Just . uniformR (0, 1))
+      booleanLine = t (width + 1) (mkStdGen seed) :: [Int]
+      empty = head $ t 1 (mkStdGen $ seed + 271) :: Int
+   in [c | c <- [0 .. width], (booleanLine !! c) == 1 && empty == 0]
+
 nextFrame :: Float -> Game -> Game
-nextFrame t (Playing p o b ln tex)
+nextFrame t (Playing p o b ln tex (t1, fp))
   | any atBottom o = GameOver
   | all null o && all null ln = Won
   | otherwise =
     let t = moveAndCollide (\c -> (fst c, snd c - 1)) (o, b)
         q = moveAndCollide (\c -> (fst c, snd c + 1)) (snd t, fst t)
-        l = ln ++ [[]]
+        l = ln ++ [generateLine (t1 + fp * 10)]
      in Playing
           p
           (snd q ++ [(e - right, top) | e <- head l])
           (fst q)
           (tail l)
           tex
+          (t1, fp + 1)
 nextFrame t g = g
 
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
@@ -146,12 +167,12 @@ decBound x b = max b (x - 1)
 incBound x b = min b (x + 1)
 
 move :: Event -> Game -> Game
-move (EventKey (SpecialKey KeyLeft) Down _ _) (Playing p o b l t) =
-  Playing (decBound (fst p) left, snd p) o b l t
-move (EventKey (SpecialKey KeyRight) Down _ _) (Playing p o b l t) =
-  Playing (incBound (fst p) right, snd p) o b l t
-move (EventKey (SpecialKey KeySpace) Down _ _) (Playing p o b l t) =
-  Playing p o (b ++ [p]) l t
+move (EventKey (SpecialKey KeyLeft) Down _ _) (Playing p o b l t (st, fp)) =
+  Playing (decBound (fst p) left, snd p) o b l t (st, fp + 1)
+move (EventKey (SpecialKey KeyRight) Down _ _) (Playing p o b l t (st, fp)) =
+  Playing (incBound (fst p) right, snd p) o b l t (st, fp + 1)
+move (EventKey (SpecialKey KeySpace) Down _ _) (Playing p o b l t (st, fp)) =
+  Playing p o (b ++ [p]) l t (st, fp + 1)
 move _ game = game
 
 --- MAIN ---------------------------------------------------------------
@@ -164,6 +185,7 @@ main = do
   enemyTexture <- loadBMP "resources/enemy.bmp"
   playerTexture <- loadBMP "resources/player.bmp"
   backgroundTexture <- loadBMP "resources/background.bmp"
+  starttime <- round `fmap` getPOSIXTime
   let startGame =
         Playing
           (0, bottom)
@@ -171,6 +193,7 @@ main = do
           []
           level1
           [bulletTexture, enemyTexture, playerTexture, backgroundTexture]
+          (starttime, 0)
   bulletImage <- loadBMP "resources/bullet.bmp"
   play
     (InWindow "Brick Game (c) Elias Nijs" (500, 800) (10, 10))
