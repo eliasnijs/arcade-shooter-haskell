@@ -53,10 +53,10 @@ dinner = 5
 
 fscale = 3
 
-backgroundColor, playerColor, enemyColor, inactiveColor, bulletColor :: Color
+backgroundColor, playerColor, enemyColor, emptyColor, bulletColor :: Color
 backgroundColor = makeColor 0 0 0 1
 
-inactiveColor = makeColor 0 0.1 0.1 1
+emptyColor = makeColor 0 0.1 0.1 1
 
 playerColor = makeColor 0 1 1 1
 
@@ -81,16 +81,16 @@ gridToviewCoords c =
       y = fromIntegral $ snd c :: Float
    in (x * dblock * fscale, y * dblock * fscale)
 
-drawXAt :: Picture -> Coord -> Picture
-drawXAt p c = uncurry translate (gridToviewCoords c) p
-
 scaleImage :: Picture -> Picture
 scaleImage = scale fscale fscale
 
+drawXAt :: Picture -> Coord -> Picture
+drawXAt p c = uncurry translate (gridToviewCoords c) (scaleImage p)
+
 pixel :: Color -> Picture
 pixel c =
-  let outer = rectangleWire (fscale * dwidth) (fscale * dwidth)
-      inner = rectangleSolid (fscale * dinner) (fscale * dinner)
+  let outer = rectangleWire dwidth dwidth
+      inner = rectangleSolid dinner dinner
    in color c $ pictures [outer, inner]
 
 emptyBoard :: Color -> Picture
@@ -101,38 +101,32 @@ emptyBoard c =
 scoreBoard :: Int -> Picture
 scoreBoard c =
   let text =
-        translate
-          (-fscale * 2)
-          (-fscale * 2.5)
-          (scale (fscale * 0.05) (fscale * 0.05) (Color black (Text $ show c)))
-      board =
-        Color white (rectangleSolid (3 * (dblock + 1) * fscale) (10 * fscale))
+        translate (-3.5) (-2.5) (scale 0.05 0.05 (Color black (Text $ show c)))
+      board = Color white (rectangleSolid 36 10)
    in pictures [board, text]
 
 renderPic :: Game -> Picture
 renderPic (Playing p o b _ t (st, fp) _) =
   pictures
-    [ scaleImage $ translate 0 (fromIntegral bottom * dblock) (t !! 3)
-    , emptyBoard inactiveColor
-    , pictures $ fmap (drawXAt $ scaleImage $ t !! 1) o
-    , pictures $ fmap (drawXAt $ scaleImage $ head t) b
-    , drawXAt (scaleImage $ t !! 2) p
-    , translate 0 (fromIntegral (bottom - 1) * dblock * fscale) (scoreBoard fp)
+    [ drawXAt (t !! 3) (0, bottom)
+    , emptyBoard emptyColor
+    , pictures $ fmap (drawXAt $ t !! 1) o
+    , pictures $ fmap (drawXAt $ head t) b
+    , drawXAt (t !! 2) p
+    , drawXAt (scoreBoard fp) (0, bottom - 1)
     ]
 renderPic Won = emptyBoard playerColor
 renderPic GameOver = emptyBoard enemyColor
 renderPic (Endscreen score) =
   pictures
-    [ Color white (rectangleWire (fscale * dblock * 6) (fscale * dblock * 3))
-    , scoreBoard score
+    [ emptyBoard enemyColor
+    , drawXAt (Color white (rectangleWire (dblock * 6) (dblock * 3))) (0, 0)
+    , drawXAt (scoreBoard score) (0, 0)
     ]
 
 -- ENGINE --------------------------------------------------------------
 onBoard :: Coord -> Bool
-onBoard c =
-  let x = fst c
-      y = snd c
-   in x >= left && x <= right && y >= bottom && y <= top
+onBoard (x, y) = x >= left && x <= right && y >= bottom && y <= top
 
 atBottom :: Coord -> Bool
 atBottom (x, y) = y == bottom
@@ -141,8 +135,7 @@ collide :: [Coord] -> [Coord] -> ([Coord], [Coord])
 collide c1 c2 = (c1 \\ c2, c2 \\ c1)
 
 moveAndCollide :: (Coord -> Coord) -> ([Coord], [Coord]) -> ([Coord], [Coord])
-moveAndCollide move (moving, static) =
-  collide (filter onBoard (fmap move moving)) (nub static)
+moveAndCollide move (m, s) = collide (filter onBoard (fmap move m)) (nub s)
 
 generateLine :: Int -> [Int]
 generateLine seed =
@@ -157,17 +150,10 @@ nextFrame t (Playing p o b ln tex (t1, fp) bp)
   | any atBottom o = Endscreen fp
   -- | all null o && all null ln = Won
   | otherwise =
-    let t = moveAndCollide (\c -> (fst c, snd c - 1)) (o, b)
-        q = moveAndCollide (\c -> (fst c, snd c + 1)) (snd t, fst t)
-        l = ln ++ [generateLine (t1 + (fp + bp) * 10)]
-     in Playing
-          p
-          (snd q ++ [(e - right, top) | e <- head l])
-          (fst q)
-          (tail l)
-          tex
-          (t1, fp + 1)
-          bp
+    let (pq1, pq2) = moveAndCollide (\(c1, c2) -> (c1, c2 - 1)) (o, b)
+        (q1, q2) = moveAndCollide (\(c1, c2) -> (c1, c2 + 1)) (pq2, pq1)
+        (l1:l) = ln ++ [generateLine (t1 + (fp + bp) * 10)]
+     in Playing p (q2 ++ [(e - right, top) | e <- l1]) q1 l tex (t1, fp + 1) bp
 nextFrame t g = g
 
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
@@ -200,11 +186,10 @@ main = do
           (0, bottom)
           []
           []
-          level1
+          [[0, 1, 3, 4, 5, 9, 10], [], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
           [bulletTexture, enemyTexture, playerTexture, backgroundTexture]
           (starttime, 0)
           0
-  bulletImage <- loadBMP "resources/bullet.bmp"
   play
     (InWindow "Brick Game (c) Elias Nijs" (500, 900) (10, 10))
     backgroundColor
