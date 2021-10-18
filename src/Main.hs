@@ -57,7 +57,7 @@ fscale = 3
 backgroundColor, playerColor, enemyColor, emptyColor, bulletColor :: Color
 backgroundColor = makeColor 0 0 0 1
 
-emptyColor = makeColor 0 0.1 0.1 1
+emptyColor = makeColor 0 0.5 0.5 0.5
 
 -- TODO (elias): remove 
 playerColor = makeColor 0 1 1 1
@@ -109,7 +109,7 @@ renderPic :: Game -> Picture
 renderPic (Playing p o b _ t (st, fp) _) =
   pictures
     [ drawXAt (t !! 3) (0, bottom)
-    , emptyBoard red
+    , emptyBoard emptyColor
     , pictures $ fmap (drawXAt $ t !! 1) o
     , pictures $ fmap (drawXAt $ head t) b
     , drawXAt (t !! 2) p
