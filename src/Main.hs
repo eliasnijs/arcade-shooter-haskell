@@ -41,7 +41,7 @@ data Game
 ---     |   MMMMMMMMM   |
 ---     |               |
 ---     +---------------+
-width = 9
+width = 10
 
 height = 20
 
