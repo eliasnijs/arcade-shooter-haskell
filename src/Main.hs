@@ -41,7 +41,7 @@ data Game
 ---     |   MMMMMMMMM   |
 ---     |               |
 ---     +---------------+
-width = 10
+width = 9
 
 height = 20
 
@@ -53,28 +53,22 @@ dinner = 3
 
 fscale = 3
 
--- TODO (elias): remove 
-backgroundColor, playerColor, enemyColor, emptyColor, bulletColor :: Color
+backgroundColor, enemyColor, emptyColor :: Color
 backgroundColor = makeColor 0 0 0 1
 
 emptyColor = makeColor 0 0.5 0.5 0.5
 
--- TODO (elias): remove 
-playerColor = makeColor 0 1 1 1
-
 enemyColor = makeColor 1 0.5 0 1
-
-bulletColor = makeColor 1 1 1 1
 
 bottom, top :: Y
 left, right :: X
-bottom = div (-height) 2
+bottom = - (div height 2)
 
-top = div height 2
+top = div (height + 1) 2
 
-left = div (-width) 2
+left = -(div width 2)
 
-right = div width 2
+right = div (width + 1) 2
 
 --- RENDERER -----------------------------------------------------------
 gridToviewCoords :: Coord -> (Float, Float)
@@ -115,15 +109,8 @@ renderPic (Playing p o b _ t (st, fp) _) =
     , drawXAt (t !! 2) p
     , drawXAt (scoreBoard fp) (0, bottom - 1)
     ]
--- TODO (elias): remove 
--- renderPic Won = emptyBoard playerColor
--- renderPic GameOver = emptyBoard enemyColor
 renderPic (Endscreen score) =
-  pictures
-    [ emptyBoard enemyColor
-    , drawXAt (Color white (rectangleWire (dblock * 6) (dblock * 3))) (0, 0)
-    , drawXAt (scoreBoard score) (0, 0)
-    ]
+  pictures [emptyBoard enemyColor, drawXAt (scoreBoard score) (0, 0)]
 
 -- ENGINE --------------------------------------------------------------
 onBoard :: Coord -> Bool
@@ -142,20 +129,18 @@ generateEnemyLine :: Int -> [Int]
 generateEnemyLine seed =
   let t :: RandomGen g => Int -> g -> [Int]
       t n = take n . unfoldr (Just . uniformR (0, 1))
-      booleanLine = t (width + 1) (mkStdGen seed) :: [Int]
+      booleanLine = t (width + 2) (mkStdGen seed) :: [Int]
       empty = sum $ t 2 (mkStdGen $ seed + 271) :: Int
-   in [c | c <- [0 .. width], (booleanLine !! c) == 1 && empty == 0]
+   in [c + right | c <- [left .. right], (booleanLine !! (c + right)) == 1 && empty == 0]
 
 nextFrame :: Float -> Game -> Game
 nextFrame t (Playing p o b ln tex (t1, fp) bp)
   | any atBottom o = Endscreen fp
-  -- | all null o && all null ln = Won
   | otherwise =
     let (pq1, pq2) = moveAndCollide (\(c1, c2) -> (c1, c2 - 1)) (o, b)
         (q1, q2) = moveAndCollide (\(c1, c2) -> (c1, c2 + 1)) (pq2, pq1)
         (l1:l) = ln ++ [generateEnemyLine (t1 + (fp + bp) * 10)]
      in Playing p (q2 ++ [(e - right, top) | e <- l1]) q1 l tex (t1, fp + 1) bp
--- TODO (elias): remove 
 nextFrame t g = g
 
 decBound, incBound :: (Ord a, Num a) => a -> a -> a
@@ -180,14 +165,14 @@ main = do
   playerTexture <- loadBMP "resources/player.bmp"
   backgroundTexture <- loadBMP "resources/background.bmp"
   starttime <- round `fmap` getPOSIXTime
--- TODO (elias): remove 
-  let level1 = [[0, 1, 3, 4, 5, 9, 10], [], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
+  let level1 =
+        [[0, 1, 3, 4, 5, 8, 9, 10], [0, 9], [], [], [2, 3, 4, 5, 6, 7, 9, 10]]
   let startGame =
         Playing
           (0, bottom)
           []
           []
-          level1
+          ([filter (\x -> onBoard (x - right, 0)) ln | ln <- level1])
           [bulletTexture, enemyTexture, playerTexture, backgroundTexture]
           (starttime, 0)
           0
